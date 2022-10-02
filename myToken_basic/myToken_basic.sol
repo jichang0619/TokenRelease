@@ -15,9 +15,17 @@
 
 // Mintable 또 하는 토큰 economics 에 의해 계속 늘어날 수 있는
 // EVM Version : istanbul(baobab)
+// 10*18 : 1000000000000000000
 
-// SmartContract : 0x3F8F1a2e1d19b049Efc3C990c34496548661081b
-// Owner : 0xb2f8c60b26a53Ae960536333311CB4a04f519084
+// SmartContract : 0xd9145CCE52D386f254917e481eB44e9943F39138
+// Owner : 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4 (전체 발행량 가지고 있음)
+// 2번째 계정 0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2 ,  // 잔액 8만개
+// 3번째 계정 0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db ,  // 잔액 6만개
+
+// approve[owner][smartcontract] = 1000 만개 의미 없는듯
+// approve[owner][2번] = 25만개
+// approve[owner][3번] = 35만개
+// approve[2번][3번] = 10만개
 
 
 pragma solidity ^0.8.0;
@@ -40,7 +48,8 @@ contract MyToken is Context, IERC20, IERC20Metadata {
     constructor() {
         _name = "myToken";
         _symbol = "MTK";
-        _mint(msg.sender, 10000000 * 10 ** decimals()); // 발행량 * 10^18 decimals() return 18 
+        _mint(msg.sender, 10000000 * 10 ** decimals()); // 발행량 * 10^18 decimals() return 18
+        // 천만개 발행
     }
 
     function name() public view virtual override returns (string memory) {
@@ -59,39 +68,43 @@ contract MyToken is Context, IERC20, IERC20Metadata {
         return _totalSupply;
     }
 
-    // 잔액 : account 에 있는 토큰 리턴.
     function balanceOf(address account) public view virtual override returns (uint256) {
         return _balances[account];
     }
 
     // <owner> 가 <to> 에게 <amount> 만큼 Token 전달. _msgSender() 는 Context.sol 에 정의 되어 있는 함수 리턴 값.
     function transfer(address to, uint256 amount) public virtual override returns (bool) {
-        address owner = _msgSender();
+        address owner = _msgSender(); // 메세지 보내는 사람 주소
         _transfer(owner, to, amount);
         return true;
     }
 
-    // 허용 : 위에 명시된 mapping 에 있는 값 리턴, _approve 함수에서 _allowance 값 적어줌. 잔고 관리 느낌
-    // 만약 20 개 중 8개 인출했다면 12개가 출력될거다... 왜 갯수가 안바뀌지???
+    // 여기서 owner 는 직접 적어주는 값
+    // 허용 : 위에 명시된 mapping 에 있는 값 리턴 (그냥 보여주는것) _approve 함수에서 _allowance 값 적어줌.
+    // owner 가 spender 에게 인출을 허용한 갯수 (approve) - 빠져나간 갯수 = 잔액..
     function allowance(address owner, address spender) public view virtual override returns (uint256) {
         return _allowances[owner][spender];
     }
 
-    // 승인 : 받는 사람 주소에 대한 승인 한도를 설정! 그 사람에게 과도하게 많이 나가는 것을 막을 수 있음
+    // 승인 : 최대한도 설정 , spender : 돈을 쓰는 사람? 돈을 가져가는 사람
     function approve(address spender, uint256 amount) public virtual override returns (bool) {
-        address owner = _msgSender();
+        address owner = _msgSender(); // 메세지 보내는 사람 주소
         _approve(owner, spender, amount);
         return true;
     }
-
-    // 일반 사용자가 토큰을 전송
+    
+    // 남의 토큰을 다른 곳에 옮김 !!
+    // from : 돈을 주려는 사람 , spender : 돈을 빼내려는 사람
+    // to(B) 는 from(A) 에게 인출 권한을 받은 사람 이어야 함 approve[A][B]
+    // C 가 A -> B 로
+    // C : spender , A : from , B : to
     function transferFrom(
-        address from,
-        address to,
-        uint256 amount
+        address from,   // 남의 지갑 : 보낼 사람
+        address to,     // 남의 지갑 : 받는 사람
+        uint256 amount  // 양
     ) public virtual override returns (bool) {
-        address spender = _msgSender();
-        _spendAllowance(from, spender, amount); // 전송하면 Allowance 갯수 바꾸어 줘야함
+        address spender = _msgSender(); 
+        _spendAllowance(from, spender, amount); // 전송하면 보낼 사람의 Allowance 갯수 바꾸어 줘야함
         _transfer(from, to, amount);
         return true;
     }
@@ -184,9 +197,11 @@ contract MyToken is Context, IERC20, IERC20Metadata {
         emit Approval(owner, spender, amount);
     }
 
+
+    // Allowance 갯수 차감
     function _spendAllowance(
-        address owner,
-        address spender,
+        address owner,          // A
+        address spender,        // C
         uint256 amount
     ) internal virtual {
         uint256 currentAllowance = allowance(owner, spender);
@@ -197,6 +212,7 @@ contract MyToken is Context, IERC20, IERC20Metadata {
             }
         }
     }
+    
 
     // 아무것도 리턴 하지 않는 함수
     function _beforeTokenTransfer(
