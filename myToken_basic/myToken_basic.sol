@@ -59,12 +59,12 @@ contract MyToken is Context, IERC20, IERC20Metadata {
         return _totalSupply;
     }
 
+    // 잔액 : account 에 있는 토큰 리턴.
     function balanceOf(address account) public view virtual override returns (uint256) {
         return _balances[account];
     }
 
-    // Token 전달 owner 가 to 에게 amount 만큼. _msgSender() 는 Context.sol 에 정의 되어 있는 함수 리턴 값.
-    // 전송 성공 (true) 여부만 리턴 함.
+    // <owner> 가 <to> 에게 <amount> 만큼 Token 전달. _msgSender() 는 Context.sol 에 정의 되어 있는 함수 리턴 값.
     function transfer(address to, uint256 amount) public virtual override returns (bool) {
         address owner = _msgSender();
         _transfer(owner, to, amount);
@@ -84,6 +84,7 @@ contract MyToken is Context, IERC20, IERC20Metadata {
         return true;
     }
 
+    // 일반 사용자가 토큰을 전송
     function transferFrom(
         address from,
         address to,
